@@ -117,7 +117,7 @@ void loop()
     currentTime = millis();
     if(currentTime - lastTime > KEEPALIVE_MS)
     {
-        uint8_t keepalive = 0x12;
+        uint8_t keepalive = 0x4F4B;
         bool st = mainDev->send(&keepalive);
 
         Serial.println("ESP-NOW TX:" + String(st == 1?"OK":"FAIL'"));
