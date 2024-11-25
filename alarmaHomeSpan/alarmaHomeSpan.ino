@@ -5,6 +5,10 @@
 #include "driver/gpio.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
+/******************************************************************************************************************/
+/*
+      AICI POTI SCHIMBA CONFIGURATIILE:
+*/
 #define MAIN_MAC "30:AE:A4:4D:16:94"
 int cnt ;
 gpio_num_t SENSOR_PIN = GPIO_NUM_5;
@@ -18,6 +22,9 @@ SpanPoint* mainDev = NULL;
 #define KEEPALIVE_MS 2000 //keep-alive message interval in MS
 #define CANAL_WIFI 1
 #define ALARM_SIGNAL 0xDEAD // signal for telling the ESP32 that the alarm has been detected
+
+
+/******************************************************************************************************/
 size_t pulseCount =0;
 size_t windowStartTime = 0;
 size_t windowCurrentTime = 0;
