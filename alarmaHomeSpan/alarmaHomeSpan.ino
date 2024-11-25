@@ -2,6 +2,7 @@
 //ESP32 to implement the alarm!
 #include "HomeSpan.h"
 #include "esp_task_wdt.h"
+#include "soc/rtc_wdt.h"
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
