@@ -6,19 +6,28 @@
 #include "freertos/task.h"
 #include "esp_wifi.h"
 #include "esp_mac.h"
-SpanPoint* mainDevice = NULL;
-bool alarmConnected = false;
+/**********************************************************/
+//              Aici poti schimba congifuratiile!
 //#define MAC_ALARMA "40:4C:CA:54:3D:F0"
 #define MAC_ALARMA "40:4C:CA:54:47:D8"
-#define LED_PIN 2 //change the led here according to your board
-#define USER_BUTTON GPIO_NUM_0
+//#define MAC_ALARMA "A0:A3:B3:97:E9:00" //adresa MAC a alarmei auto 
+#define LED_PIN 2 //pin-ul pentru LED
+#define USER_BUTTON GPIO_NUM_0 //butonul de utilizator de pe ESP
 #define CANAL_WIFI 1//pentru comunicatie ESP-NOW si WiFi
-#define CONNECTION_TIMEOUT 5000 //timeout in milisecunde 
+#define CONNECTION_TIMEOUT 5000 //timeout in milisecunde pentru conexiunea dintre ESP-uri,
+                                //daca nu primeste niciun semnal de la alarma timp de
+                                //CONECTION_TIMEOUT, se va trimite o notificare pe Home
+
+
+/**********************************************************/
 bool alarmTriggered = false;
 uint16_t tx_byte = 0xD1;
 uint16_t rx_byte = 0;
 size_t currentTime, lastTime;
-//struct RemoteAlarm:Service::
+SpanPoint* mainDevice = NULL;
+bool alarmConnected = false;
+bool alarmArmed = true; //assume the alarm is armed for now,
+                        //it can be disarmed through home
 
 struct vibrationSensor:Service::MotionSensor
 {
@@ -62,8 +71,16 @@ struct controlAlarma:Service::SecuritySystem
      }
      bool update()
      {
+      uint8_t alarmState = stareAlarmaTinta->getNewVal();
       Serial.print("Eveniment legat de Alarma! stareAlarmaTinta:");
-      Serial.println(stareAlarmaTinta->getNewVal());
+      Serial.println(alarmState);
+      if(alarmState == 3)
+      {
+        alarmArmed = false;
+        Serial.println("Alarma dezarmata, senzorii inca merg dar nu vei fi notificat la declansare");
+      }
+      // Serial.print("Eveniment legat de Alarma! stareAlarmaCurenta:");
+      // Serial.println(stareAlarmaCurenta->getNewVal());
       return true;
      }
 };
@@ -115,8 +132,34 @@ struct SistemSecuritate:Service::ContactSensor
       return true;
     }
 };
+struct ledESP:Service::LightBulb
+{
+    private:
+      int pinLed;
+      SpanCharacteristic* stareLED;
+      SpanCharacteristic* numeLED;
+      String ledName;
+    public:
+      ledESP(int pin, String name):Service::LightBulb()
+      {
+          this->pinLed = pin;
+          this->ledName = name;
+          pinMode(this->pinLed, OUTPUT);
+          stareLED = new Characteristic::On(1);
+          numeLED = new Characteristic::ConfiguredName(this->ledName.c_str());
+
+      }
+    bool update()
+    {
+        bool newState = stareLED->getNewVal();
+        Serial.println("Stare LED schimbata in:" + String(newState));
+        digitalWrite(this->pinLed, newState);
+        return true;
+    }
+};
 vibrationSensor* _vibrationSensor; //for the motion sensor detection....
 SistemSecuritate* _SistemSecuritate;//for the contact sensor....
+ledESP* ledPeESP;
 void esp_now_task(void* pvArg)
 {
   size_t lastReceivedTime = 0;
@@ -129,13 +172,18 @@ bool printedDisconnection = false;
       _currentTime = millis();
       if(mainDevice->get(&rx_byte) == true)//data received via ESP-NOW
       {
-          Serial.println("Received byte : " + String(rx_byte));       
+          Serial.println("ESP-NOW:" + String(rx_byte));       
           if(rx_byte == 0xDEAD) //alarm triggered
           {
-              alarmTriggered = true;
-              _SistemSecuritate->setPresenceDetected(0);
-              _vibrationSensor->setMotionState(1);
-          }    
+              if(alarmArmed == true)
+              {
+                    Serial.println("ALARMA DECLANSATA!");
+                    alarmTriggered = true;
+                    _SistemSecuritate->setPresenceDetected(0);
+                    _vibrationSensor->setMotionState(1);
+              }
+              Serial.println("Vibratie detectata, alarma nu va fi declansata, este armata");
+           }    
            if (!alarmConnected) 
            {
                 alarmConnected = true;
@@ -156,6 +204,7 @@ bool printedDisconnection = false;
 }
 static void gpio_isr(void)
 {
+  //reset the alarm state to no triggered
   _SistemSecuritate->setPresenceDetected(0);
   _vibrationSensor->setMotionState(1);
 }
@@ -171,22 +220,21 @@ void setup() {
     new Service::AccessoryInformation();                
       new Characteristic::Identify();                        
 
-    new Service::LightBulb();                      
-      new Characteristic::On(true);            // NEW: Providing an argument sets its initial value.  In this case it means the LightBulb will be turned on at start-up
-
+    // new Service::LightBulb();                      
+    //   new Characteristic::On(true);            // NEW: Providing an argument sets its initial value.  In this case it means the LightBulb will be turned on at start-up
+      
     _vibrationSensor = new vibrationSensor();
     new Service::BatteryService();
       new Characteristic::BatteryLevel();
       new Characteristic::StatusLowBattery();
 
-   
+   ledPeESP = new ledESP(LED_PIN, "LED_ESP32");
        new butonAlarma();
     
     new controlAlarma();
    _SistemSecuritate = new SistemSecuritate();    
       pinMode(2, OUTPUT);
       digitalWrite(2 , HIGH);
-    //  homeSpan.setChannel()
       SpanPoint::setEncryption(false);
       mainDevice = new SpanPoint(MAC_ALARMA, sizeof(uint16_t),sizeof(uint16_t));
       xTaskCreate(esp_now_task,"esp_now_task", 4095,NULL, 4, NULL);
