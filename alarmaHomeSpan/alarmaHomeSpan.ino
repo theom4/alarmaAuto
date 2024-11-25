@@ -1,5 +1,6 @@
 /******************************/
 //ESP32 to implement the alarm!
+
 #include "HomeSpan.h"
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
@@ -94,7 +95,8 @@ static void userISR(void)
 }
 void setup() 
 {
-    Serial.begin(115200);
+  esp_task_wdt_deinit();  
+  Serial.begin(115200);
     delay(100);
 
     SpanPoint::setEncryption(false);// no password
