@@ -96,7 +96,11 @@ static void userISR(void)
 }
 void setup() 
 {
-    esp_task_wdt_deinit();
+   rtc_wdt_protect_off(); // Disable write protection
+    rtc_wdt_disable();     // Disable the RTC watchdog
+    disableCore0WDT();    // Disable core 0 watchdog (if needed)
+    disableLoopWDT(); 
+esp_task_wdt_deinit();
 Serial.begin(115200);
     delay(100);
 
