@@ -1,5 +1,4 @@
 
-/*****************************************************/
 //ESP32 to connect to the Home app!
 #include "HomeSpan.h"         // Always start by including the HomeSpan library
 #include "freertos/FreeRTOS.h"
