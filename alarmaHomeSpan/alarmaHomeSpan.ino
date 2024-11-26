@@ -172,8 +172,10 @@ static void alarmHandlingTask(void* pvArg)
   Serial.println("ALARMA DECLANSATA!");
   vTaskDelay(pdMS_TO_TICKS(1000));
   Serial.println("ALARMA OPRITA!");
+  taskENTER_CRITICAL();
   alarmTriggered = false;
   isAlarmTaskRunning = false;
+  taskENTER_CRITICAL();
   _SistemSecuritate->setPresenceDetected(0);
   _vibrationSensor->setMotionState(1);
   vTaskDelete(NULL);
