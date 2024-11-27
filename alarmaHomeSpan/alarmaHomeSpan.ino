@@ -21,6 +21,9 @@ gpio_num_t SECOND_SENSOR_PIN = GPIO_NUM_6; // pinul folosit pentru al doilea sen
 #define KEEPALIVE_MS 2000 //keep-alive message interval in MS
 #define CANAL_WIFI 1
 #define RELAY_PIN 6 //pin pentru conexiunea la releul ce decclanseaza buzerr-ul
+//Decomenteaza aici daca vrei ca ESP-ul sa pirmeasca data prin ESP-NOW, nu doar sa transmita
+//#define ESP_NOW_RX_ENABLE 
+
 /******************************************************************************************************/
 #define ALARM_SIGNAL 0xDEAD // signal for telling the ESP32 that the alarm has been detected
 SpanPoint* mainDev = NULL;
@@ -30,6 +33,10 @@ size_t windowCurrentTime = 0;
 size_t lastAlarmTime = 0;
 size_t currentTime = 0 ;
 size_t lastTime =0 ;
+//////////
+//Use this variable only as a base source!
+size_t systemCurrentTime = 0;
+/////////
 uint16_t rx_byte = 0, tx_byte = 0;
 struct
 {
@@ -79,7 +86,6 @@ static void triggerAlarm(void)
 void IRAM_ATTR vibration2ISR()
 {
     currentTime = millis();
-    static int pulseCount = 0;
       //Serial.println("/");
 
     if((windowStartTime == 0) && ((currentTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
@@ -139,21 +145,34 @@ void setup()
       // String mac_addr = WiFi.macAddress();
       // Serial.println("This is the MAC ------>" + mac_addr);
 }
-
-void loop() 
+//Send keep-alive message via ESP-NOW
+#ifdef ESP_NOW_RX_ENABLE
+  static void checkIncomingData(void)
+  {
+    if(mainDev->get(&rx_byte) == true) //data received via ESP-NOW - could be the current time or the alarm to be armed
+    {
+          Serial.println("Received byte :" + String(rx_byte));
+          rx_byte = 0;
+    } 
+  }
+#endif
+inline void sendPeriodicKA(void)
 {
-    currentTime = millis();
-    if(currentTime - lastTime > KEEPALIVE_MS)
+     if(currentTime - lastTime > KEEPALIVE_MS)
     {
         uint8_t keepalive = 0x4F4B;
         bool st = mainDev->send(&keepalive);
-
-        Serial.println("ESP-NOW TX:" + String(st == 1?"OK":"FAIL'"));
+        if(st == 0)
+        {
+          Serial.println("ESP-NOW TX Fail!");
+        }
         lastTime = currentTime;
-      
-        //send data via ESP-NOW for satying connected!
-        //also get the current time, if wanted...
     }
+}
+void loop() 
+{
+    currentTime = millis();
+    
     if(currentTime - windowStartTime > WINDOW_SIZE && windowStartTime !=0)
     {
       if(pulseCount < PULSE_THRESHOLD)
@@ -162,6 +181,7 @@ void loop()
           windowStartTime = 0;
       }
     }
+
     if(alarmTriggered == true)
     {
       alarmTriggered = false;
@@ -170,13 +190,10 @@ void loop()
       mainDev->send(&tx_byte);
       lastAlarmTime = millis();
     }
-    
-    if(mainDev->get(&rx_byte) == true) //data received via ESP-NOW - could be the current time or the alarm to be armed
-    {
-          //parseRxByte - you may need to implement it via a queue and a task
-          Serial.println("Received byte :" + String(rx_byte));
-          //parseRxData(rx_byte);
-          rx_byte = 0;
-    } 
+  
+#ifdef ESP_NOW_RX_ENABLE
+  checkIncomingData();
+#endif
+
     
 }
