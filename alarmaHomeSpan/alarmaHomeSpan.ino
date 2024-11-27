@@ -20,7 +20,7 @@ gpio_num_t SECOND_SENSOR_PIN = GPIO_NUM_6; // pinul folosit pentru al doilea sen
 #define USER_BUTTON GPIO_NUM_9 // buton utilizator - pentru testare
 #define KEEPALIVE_MS 2000 //keep-alive message interval in MS
 #define CANAL_WIFI 1
-
+#define RELAY_PIN 6 //pin pentru conexiunea la releul ce decclanseaza buzerr-ul
 /******************************************************************************************************/
 #define ALARM_SIGNAL 0xDEAD // signal for telling the ESP32 that the alarm has been detected
 SpanPoint* mainDev = NULL;
@@ -31,20 +31,19 @@ size_t lastAlarmTime = 0;
 size_t currentTime = 0 ;
 size_t lastTime =0 ;
 uint16_t rx_byte = 0, tx_byte = 0;
-//
-bool alarmTriggered = false;
-//
-static void AlarmTask(void* pvArg)
+struct
 {
-  Serial.println("Starting the HomeSpan task!");
-  while(1)
-  {
-    //check if the vibration sensor iss active here...
-    //trigger buzzer if active
-    //Send the alarm warning via ESP-NOW 
-  }
-  vTaskDelete(NULL);
-}
+  size_t pulseCount =0;
+  size_t windowStartTime = 0;
+  size_t windowCurrentTime = 0;
+  size_t lastAlarmTime = 0;
+  size_t currentTime = 0 ;
+  size_t lastTime =0 ;
+}alarmTime_t;
+alarmTime_t senzor1 = {0};
+alarmTime_t senzor2 = {0};
+bool alarmTriggered = false;
+
 static void triggerAlarm(void)
 {
   //Send the alarm to the central hub and wait for feedback!
@@ -87,8 +86,6 @@ void IRAM_ATTR vibration2ISR()
     {
         windowStartTime = currentTime;
         pulseCount = 1;
-        Serial.println("-");
-
     }
     if(windowStartTime != 0)//counting started, inc pulseCount
     {
@@ -105,15 +102,7 @@ void IRAM_ATTR vibration2ISR()
       }
     }
 }
-static void gpio_isr_init(void)
-{
-    ESP_ERROR_CHECK(gpio_reset_pin(SENSOR_PIN));
-    ESP_ERROR_CHECK(gpio_set_direction(SENSOR_PIN,GPIO_MODE_INPUT));
-    ESP_ERROR_CHECK(gpio_set_pull_mode(SENSOR_PIN,GPIO_PULLDOWN_ONLY));
-    ESP_ERROR_CHECK(gpio_set_intr_type(SENSOR_PIN,GPIO_INTR_POSEDGE));
-    ESP_ERROR_CHECK(gpio_install_isr_service(0));
-   // ESP_ERROR_CHECK(gpio_isr_handler_add(SENSOR_PIN, vibrationISR,NULL));
-}
+
 static void userISR(void)
 {
     //Emulate here the triggering of an alarm for testing purposes
@@ -124,10 +113,8 @@ void setup()
 {
    rtc_wdt_protect_off(); // Disable write protection
     rtc_wdt_disable();     // Disable the RTC watchdog
-    disableCore0WDT();    // Disable core 0 watchdog (if needed)
-    disableLoopWDT(); 
-esp_task_wdt_deinit();
-Serial.begin(115200);
+   
+   Serial.begin(115200);
     delay(100);
 
     SpanPoint::setEncryption(false);// no password
@@ -138,8 +125,7 @@ Serial.begin(115200);
     esp_wifi_set_channel(11,(wifi_second_chan_t)0);
 
    // homeSpan.setLogLevel(1);
-  //xTaskCreate(AlarmTask, "Task Alarma",4096,NULL,5,NULL);
-  //gpio_isr_init();
+ 
     pinMode(SENSOR_PIN,INPUT);
     pinMode(USER_BUTTON, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(USER_BUTTON),userISR,FALLING);
