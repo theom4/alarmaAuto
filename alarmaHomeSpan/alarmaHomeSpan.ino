@@ -80,7 +80,8 @@ static void triggerAlarm(void)
 void IRAM_ATTR vibration2ISR()
 {
     currentTime = millis();
-    //Serial.println("/");
+    static int pulseCount = 0;
+      //Serial.println("/");
 
     if((windowStartTime == 0) && ((currentTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
     {
