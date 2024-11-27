@@ -2,7 +2,7 @@
 //ESP32 to implement the alarm!
 #include "HomeSpan.h"
 #include "esp_task_wdt.h"
-#include "soc/rtc_wdt.h"
+#include <rtc_wdt.h>
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -11,9 +11,9 @@
 /*
       AICI POTI SCHIMBA CONFIGURATIILE:
 */
-#define MAIN_MAC "30:AE:A4:4D:16:94"
-int cnt ;
-gpio_num_t SENSOR_PIN = GPIO_NUM_5;
+#define MAIN_MAC "30:AE:A4:4D:16:94" //Adresa MAC a celeilalte placi
+gpio_num_t SENSOR_PIN = GPIO_NUM_5; // pinul folosit pentru primul senzor de vibratie
+gpio_num_t SECOND_SENSOR_PIN = GPIO_NUM_6; // pinul folosit pentru al doilea senzor de vibratie
 #define PULSE_THRESHOLD 40 //cate pulsuri de la senzor sa primesti(in milisecunde) ca sa declansezi alarma
 #define COOLDOWN_PERIOD 900 // perioada minima in milisecunde intre 2 declansari contigue a alarmei 
 #define WINDOW_SIZE 1000//perioada in milisecunde in care se numara pulsurile de la senzor
@@ -50,6 +50,34 @@ static void triggerAlarm(void)
   //Send the alarm to the central hub and wait for feedback!
 }
  void IRAM_ATTR vibrationISR()
+{
+    currentTime = millis();
+    //Serial.println("/");
+
+    if((windowStartTime == 0) && ((currentTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
+    {
+        windowStartTime = currentTime;
+        pulseCount = 1;
+        Serial.println("-");
+
+    }
+    if(windowStartTime != 0)//counting started, inc pulseCount
+    {
+      pulseCount++;
+      Serial.println("+");
+    }
+    if(currentTime - windowStartTime >= WINDOW_SIZE)
+    {
+      if(pulseCount >= PULSE_THRESHOLD) //alarma se declanseaza
+      {
+          lastAlarmTime = millis();
+          pulseCount = 0;
+          alarmTriggered = true;
+      }
+    }
+}
+//Sub dezvoltare, se adauga
+void IRAM_ATTR vibration2ISR()
 {
     currentTime = millis();
     //Serial.println("/");
@@ -115,6 +143,8 @@ Serial.begin(115200);
     pinMode(USER_BUTTON, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(USER_BUTTON),userISR,FALLING);
     attachInterrupt(digitalPinToInterrupt(SENSOR_PIN),vibrationISR,RISING);
+    attachInterrupt(digitalPinToInterrupt(SECOND_SENSOR_PIN),vibration2ISR,RISING);
+
       // int channel =0;
       // channel = WiFi.channel();
       // Serial.println("CHANNEL USED ::");
