@@ -1,13 +1,13 @@
 
+/*****************************************************/
 //ESP32 to connect to the Home app!
-#include "HomeSpan.h"         // Always start by including the HomeSpan library
+#include "HomeSpan.h"        
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_wifi.h"
 #include "esp_mac.h"
-/**********************************************************/
+/*********************************************************************/
 //              Aici poti schimba congifuratiile!
-//#define MAC_ALARMA "40:4C:CA:54:3D:F0"
 #define MAC_ALARMA "40:4C:CA:54:47:D8"
 //#define MAC_ALARMA "A0:A3:B3:97:E9:00" //adresa MAC a alarmei auto 
 #define LED_PIN 2 //pin-ul pentru LED
@@ -18,7 +18,7 @@
                                 //CONECTION_TIMEOUT, se va trimite o notificare pe Home
 
 
-/**********************************************************/
+/*********************************************************************/
 bool alarmTriggered = false;
 uint16_t tx_byte = 0xD1;
 uint16_t rx_byte = 0;
@@ -27,7 +27,13 @@ SpanPoint* mainDevice = NULL;
 bool alarmConnected = false;
 bool alarmArmed = true; //assume the alarm is armed for now,
                         //it can be disarmed through home
-
+bool isAlarmTaskRunning = false;
+struct
+{
+    int x;
+    //bool isAlarmTaskRunning;
+    //bool
+}autoAlarm_t;
 struct vibrationSensor:Service::MotionSensor
 {
  private:
@@ -159,6 +165,21 @@ struct ledESP:Service::LightBulb
 vibrationSensor* _vibrationSensor; //for the motion sensor detection....
 SistemSecuritate* _SistemSecuritate;//for the contact sensor....
 ledESP* ledPeESP;
+static void alarmHandlingTask(void* pvArg)
+{
+  //get the alarm state via pvArg! - safety approach
+  isAlarmTaskRunnning = true;
+  Serial.println("ALARMA DECLANSATA!");
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  Serial.println("ALARMA OPRITA!");
+  taskENTER_CRITICAL();
+  alarmTriggered = false;
+  isAlarmTaskRunning = false;
+  taskENTER_CRITICAL();
+  _SistemSecuritate->setPresenceDetected(0);
+  _vibrationSensor->setMotionState(1);
+  vTaskDelete(NULL);
+}
 void esp_now_task(void* pvArg)
 {
   size_t lastReceivedTime = 0;
@@ -176,12 +197,20 @@ bool printedDisconnection = false;
           {
               if(alarmArmed == true)
               {
-                    Serial.println("ALARMA DECLANSATA!");
+                    
                     alarmTriggered = true;
                     _SistemSecuritate->setPresenceDetected(0);
                     _vibrationSensor->setMotionState(1);
+                    if(isAlarmTaskRunning == false && alarmArmed == true)
+                    {
+                      xTaskCreate(alarmHandlingTask, "alarmHandlingTask", 2048, NULL, 5, NULL);
+
+                    }
               }
-              Serial.println("Vibratie detectata, alarma nu va fi declansata, este armata");
+              else
+              {
+                  Serial.println("Vibratie detectata, alarma nu va fi declansata, este dezarmata");
+              }
            }    
            if (!alarmConnected) 
            {
@@ -236,7 +265,7 @@ void setup() {
       digitalWrite(2 , HIGH);
       SpanPoint::setEncryption(false);
       mainDevice = new SpanPoint(MAC_ALARMA, sizeof(uint16_t),sizeof(uint16_t));
-      xTaskCreate(esp_now_task,"esp_now_task", 4095,NULL, 4, NULL);
+      xTaskCreate(esp_now_task,"esp_now_task", 4095 * 2 ,NULL, 4, NULL);
       // int channel =0;
       // channel = WiFi.channel();
       // Serial.println("CHANNEL USED ::");
@@ -259,32 +288,12 @@ void homeSpanTask(void* pvArg)
   }
 }
 
-void loop(){
-          
-   
-  //  if(currentTime - lastTime > 2000)
-  //  {
-  //       uint8_t ch = 'h';
-  //       bool status = mainDevice->send(&ch);
-  //       if(status)Serial.println("Sent OK");
-  //         lastTime = currentTime;
-
-  //  }
-  
-   homeSpan.poll();
-    //  int channel =0;
-    // channel = WiFi.channel();
-    //   Serial.println("CHANNEL USED ::");
-    //   Serial.println(channel);
-  //  if(status == false && alarmConnected == true)
-  //  {
-  //     alarmConnected = false;  
-  //     Serial.println("Alarma deconectata!" + String(WiFi.channel()));
-  //  }
-  //  else if(status == true && alarmConnected == false)
-  //  {
-  //      alarmConnected = true;
-  //    Serial.println("Alarma conectata!" + String(WiFi.channel()));
-  //  }
-  // delay(1000);
+void loop()
+{
+      homeSpan.poll();
+      //Decomenteaza sectiunea asta daca vrei sa afli canalul de WiFi pentru ESP-NOW
+      //  int channel =0;
+      // channel = WiFi.channel();
+      //   Serial.println("CHANNEL USED ::");
+      //   Serial.println(channel);
 }
