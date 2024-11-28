@@ -34,11 +34,10 @@ size_t pulseCount =0;
 size_t windowStartTime = 0;
 size_t windowCurrentTime = 0;
 size_t lastAlarmTime = 0;
-size_t currentTime = 0 ;
 size_t lastKaTime =0 ; //for ESP-NOW delay 
 //////////
 //Use this variable only as a base source!
-size_t systemCurrentTime = 0;
+size_t sysCurrTime = 0;
 /////////
 uint16_t rx_byte = 0, tx_byte = 0;
 struct alarmTimeStruct {
@@ -46,13 +45,12 @@ struct alarmTimeStruct {
     size_t windowStartTime;
     size_t windowCurrentTime;
     size_t lastAlarmTime;
-    size_t currentTime;
     bool isAlarmTriggered;
 
     // Constructor to initialize members
     alarmTimeStruct() 
         : pulseCount(0), windowStartTime(0), windowCurrentTime(0), 
-          lastAlarmTime(0), currentTime(0), isAlarmTriggered(false) {}
+          lastAlarmTime(0), isAlarmTriggered(false) {}
 };
 alarmTimeStruct senzor1 ;
 alarmTimeStruct senzor2 ;
@@ -81,11 +79,10 @@ static void triggerAlarm(void)
 }
  void IRAM_ATTR vibrationISR()
 {
-    currentTime = millis();
-    systemCurrentTime = millis();
-    if((windowStartTime == 0) && ((currentTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
+    sysCurrTime = millis();
+    if((windowStartTime == 0) && ((sysCurrTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
     {
-        windowStartTime = currentTime;
+        windowStartTime = sysCurrTime;
         pulseCount = 1;
         senzor1.pulseCount = 1;
         Serial.println("-");
@@ -97,7 +94,7 @@ static void triggerAlarm(void)
       senzor2.pulseCount++;
       Serial.println("+");
     }
-    if(currentTime - windowStartTime >= WINDOW_SIZE)
+    if(sysCurrTime - windowStartTime >= WINDOW_SIZE)
     {
       if(pulseCount >= PULSE_THRESHOLD) //alarma se declanseaza
       {
@@ -107,15 +104,14 @@ static void triggerAlarm(void)
       }
     }
 }
-//Sub dezvoltare, se adauga
+//ISR pentru al doilea senzor
 void IRAM_ATTR vibration2ISR()
 {
-    currentTime = millis();
-    systemCurrentTime = millis();
+    sysCurrTime = millis();
 
-    if((windowStartTime == 0) && ((currentTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
+    if((windowStartTime == 0) && ((sysCurrTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
     {
-        windowStartTime = currentTime;
+        windowStartTime = sysCurrTime;
         pulseCount = 1;
         senzor2.pulseCount = 1;
 
@@ -126,7 +122,7 @@ void IRAM_ATTR vibration2ISR()
       senzor2.pulseCount++;
       Serial.println("+");
     }
-    if(currentTime - windowStartTime >= WINDOW_SIZE)
+    if(sysCurrTime - windowStartTime >= WINDOW_SIZE)
     {
       if(pulseCount >= PULSE_THRESHOLD) //alarma se declanseaza
       {
@@ -166,8 +162,8 @@ void setup()
     attachInterrupt(digitalPinToInterrupt(SENSOR_PIN),vibrationISR,RISING);
     attachInterrupt(digitalPinToInterrupt(SECOND_SENSOR_PIN),vibration2ISR,RISING);
    
-    currentTime = millis();
-    systemCurrentTime = millis();
+
+    sysCurrTime = millis();
       //Decomenteaza asta daca vrei sa afli canalul folosit de ESP32
      
       // Serial.println("CHANNEL USED ::");
@@ -188,7 +184,7 @@ void setup()
 #endif
 inline void sendPeriodicKA(void)
 {
-     if(currentTime - lastKaTime > KEEPALIVE_MS)
+     if(sysCurrTime - lastKaTime > KEEPALIVE_MS)
     {
         uint8_t keepalive = 0x4F4B;
         bool st = mainDev->send(&keepalive);
@@ -196,14 +192,13 @@ inline void sendPeriodicKA(void)
         {
           Serial.println("ESP-NOW TX Fail!");
         }
-        lastKaTime = currentTime;
+        lastKaTime = sysCurrTime;
     }
 }
 void loop() 
 {
-    currentTime = millis();
-    systemCurrentTime = millis();
-    if(currentTime - windowStartTime > WINDOW_SIZE && windowStartTime !=0)
+    sysCurrTime = millis();
+    if(sysCurrTime - windowStartTime > WINDOW_SIZE && windowStartTime !=0)
     {
       if(pulseCount < PULSE_THRESHOLD)
       {
