@@ -46,8 +46,6 @@ struct alarmTimeStruct {
     size_t windowCurrentTime;
     size_t lastAlarmTime;
     bool isAlarmTriggered;
-
-    // Constructor to initialize members
     alarmTimeStruct() 
         : pulseCount(0), windowStartTime(0), windowCurrentTime(0), 
           lastAlarmTime(0), isAlarmTriggered(false) {}
@@ -63,15 +61,15 @@ static void stopBuzzer(void)
 {
   //digitalWrite(RELAY_PIN, HIGH);
 }
-static inline sendAlarmSignal(alarmTimeStruct& sensorStruct)
+static inline void sendAlarmSignal(alarmTimeStruct& sensorStruct)
 {
       sensorStruct.isAlarmTriggered = false;
-      sensorStruct.lastAlarmTime = millis();
       alarmTriggered = false;
+      sensorStruct.lastAlarmTime = millis();
+      lastAlarmTime = millis();
       Serial.println("ALARM TRIGGERED!!!");
       tx_byte = ALARM_SIGNAL;
       mainDev->send(&tx_byte);
-      lastAlarmTime = millis();
 }
 static void triggerAlarm(void)
 {
@@ -80,13 +78,34 @@ static void triggerAlarm(void)
  void IRAM_ATTR vibrationISR()
 {
     sysCurrTime = millis();
+    //pentru primul senzor
+    // if((senzor1.windowStartTime == 0) && ((sysCurrTime - senzor1.lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
+    // {
+    //     senzor1.windowStartTime = sysCurrTime;
+    //     pulseCount = 1;
+    //     senzor1.pulseCount = 1;
+    //     Serial.println("-");
+    // }
+    // if(senzor1.windowStartTime != 0)//counting started, inc pulseCount
+    // {
+    //   pulseCount++;
+    //   senzor1.pulseCount++;
+    //   Serial.println("+");
+    // }
+    // if(sysCurrTime - senzor1.windowStartTime >= WINDOW_SIZE)
+    // {
+    //   if(senzor1.pulseCount >= PULSE_THRESHOLD) //alarma se declanseaza
+    //   {
+    //       senzor1.lastAlarmTime = millis();
+    //       senzor1.pulseCount = 0;
+    //       alarmTriggered = true;
+    //   }
+    // }
     if((windowStartTime == 0) && ((sysCurrTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
     {
         windowStartTime = sysCurrTime;
         pulseCount = 1;
-        senzor1.pulseCount = 1;
         Serial.println("-");
-
     }
     if(windowStartTime != 0)//counting started, inc pulseCount
     {
@@ -108,7 +127,28 @@ static void triggerAlarm(void)
 void IRAM_ATTR vibration2ISR()
 {
     sysCurrTime = millis();
-
+    // if((senzor2.windowStartTime == 0) && ((sysCurrTime - senzor2.lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
+    // {
+    //     senzor2.windowStartTime = sysCurrTime;
+    //     pulseCount = 1;
+    //     senzor2.pulseCount = 1;
+    //     Serial.println("-");
+    // }
+    // if(senzor2.windowStartTime != 0)//counting started, inc pulseCount
+    // {
+    //   pulseCount++;
+    //   senzor2.pulseCount++;
+    //   Serial.println("+");
+    // }
+    // if(sysCurrTime - senzor2.windowStartTime >= WINDOW_SIZE)
+    // {
+    //   if(senzor2.pulseCount >= PULSE_THRESHOLD) //alarma se declanseaza
+    //   {
+    //       senzor2.lastAlarmTime = millis();
+    //       senzor2.pulseCount = 0;
+    //       alarmTriggered = true;
+    //   }
+    // }
     if((windowStartTime == 0) && ((sysCurrTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
     {
         windowStartTime = sysCurrTime;
@@ -133,7 +173,7 @@ void IRAM_ATTR vibration2ISR()
     }
 }
 
-static void userISR(void)
+static void userISR(void) //push-button ISR
 {
     //Emulate here the triggering of an alarm for testing purposes
     Serial.println("@");
@@ -157,6 +197,7 @@ void setup()
    // homeSpan.setLogLevel(1);
  
     pinMode(SENSOR_PIN,INPUT);
+    pinMode(SECOND_SENSOR_PIN,INPUT);
     pinMode(USER_BUTTON, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(USER_BUTTON),userISR,FALLING);
     attachInterrupt(digitalPinToInterrupt(SENSOR_PIN),vibrationISR,RISING);
@@ -209,7 +250,7 @@ void loop()
 
     if(alarmTriggered == true)
     {
-      sendAlarmSignal();
+      sendAlarmSignal(senzor1);
     }
 
     if(senzor1.isAlarmTriggered == true)
@@ -219,17 +260,16 @@ void loop()
       tx_byte = ALARM_SIGNAL;
       mainDev->send(&tx_byte);
       senzor1.lastAlarmTime = millis();
-      sendAlarmSignal(&senzor1);
+      sendAlarmSignal(senzor1);
 
     }
      if(senzor2.isAlarmTriggered == true)
     {
-       sendAlarmSignal(&senzor2);
+       sendAlarmSignal(senzor2);
     }
   
 #ifdef ESP_NOW_RX_ENABLE
   checkIncomingData();
 #endif
 
-    
 }
