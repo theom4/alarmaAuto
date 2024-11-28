@@ -2,7 +2,8 @@
 //ESP32 to implement the alarm!
 #include "HomeSpan.h"
 #include "esp_task_wdt.h"
-#include <rtc_wdt.h>
+#include "esp_system.h"
+#include "driver/rtc_io.h"
 #include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
@@ -12,45 +13,68 @@
       AICI POTI SCHIMBA CONFIGURATIILE:
 */
 #define MAIN_MAC "30:AE:A4:4D:16:94" //Adresa MAC a celeilalte placi
-gpio_num_t SENSOR_PIN = GPIO_NUM_5; // pinul folosit pentru primul senzor de vibratie
-gpio_num_t SECOND_SENSOR_PIN = GPIO_NUM_6; // pinul folosit pentru al doilea senzor de vibratie
+gpio_num_t SENSOR_PIN = GPIO_NUM_5; // pinul folosit pentru primul senzor de vibratie (GPIO_NUM_X)
+gpio_num_t SECOND_SENSOR_PIN = GPIO_NUM_6; // pinul folosit pentru al doilea senzor de vibratie (GPIO_NUM_X)
+#define RELAY_PIN 7 // pinul pentru releu ce declanseaza alarma
 #define PULSE_THRESHOLD 40 //cate pulsuri de la senzor sa primesti(in milisecunde) ca sa declansezi alarma
 #define COOLDOWN_PERIOD 900 // perioada minima in milisecunde intre 2 declansari contigue a alarmei 
 #define WINDOW_SIZE 1000//perioada in milisecunde in care se numara pulsurile de la senzor
 #define USER_BUTTON GPIO_NUM_9 // buton utilizator - pentru testare
 #define KEEPALIVE_MS 2000 //keep-alive message interval in MS
-#define CANAL_WIFI 1
+#define CANAL_WIFI 11 //canalul folosit de ESP-NOW
 #define RELAY_PIN 6 //pin pentru conexiunea la releul ce decclanseaza buzerr-ul
-//Decomenteaza aici daca vrei ca ESP-ul sa pirmeasca data prin ESP-NOW, nu doar sa transmita
+
+//Decomenteaza aici daca vrei ca ESP-ul sa pirmeasca date prin ESP-NOW, nu doar sa transmita
 //#define ESP_NOW_RX_ENABLE 
 
 /******************************************************************************************************/
 #define ALARM_SIGNAL 0xDEAD // signal for telling the ESP32 that the alarm has been detected
-SpanPoint* mainDev = NULL;
+SpanPoint* mainDev = NULL; //ESP-NOW object
 size_t pulseCount =0;
 size_t windowStartTime = 0;
 size_t windowCurrentTime = 0;
 size_t lastAlarmTime = 0;
 size_t currentTime = 0 ;
-size_t lastTime =0 ;
+size_t lastKaTime =0 ; //for ESP-NOW delay 
 //////////
 //Use this variable only as a base source!
 size_t systemCurrentTime = 0;
 /////////
 uint16_t rx_byte = 0, tx_byte = 0;
-struct
-{
-  size_t pulseCount =0;
-  size_t windowStartTime = 0;
-  size_t windowCurrentTime = 0;
-  size_t lastAlarmTime = 0;
-  size_t currentTime = 0 ;
-  size_t lastTime =0 ;
-}alarmTime_t;
-alarmTime_t senzor1 = {0};
-alarmTime_t senzor2 = {0};
-bool alarmTriggered = false;
+struct alarmTimeStruct {
+    size_t pulseCount;
+    size_t windowStartTime;
+    size_t windowCurrentTime;
+    size_t lastAlarmTime;
+    size_t currentTime;
+    bool isAlarmTriggered;
 
+    // Constructor to initialize members
+    alarmTimeStruct() 
+        : pulseCount(0), windowStartTime(0), windowCurrentTime(0), 
+          lastAlarmTime(0), currentTime(0), isAlarmTriggered(false) {}
+};
+alarmTimeStruct senzor1 ;
+alarmTimeStruct senzor2 ;
+bool alarmTriggered = false;
+static void triggerBuzzer(void)
+{
+  //digitalWrite(RELAY_PIN, LOW);
+}
+static void stopBuzzer(void)
+{
+  //digitalWrite(RELAY_PIN, HIGH);
+}
+static inline sendAlarmSignal(alarmTimeStruct& sensorStruct)
+{
+      sensorStruct.isAlarmTriggered = false;
+      sensorStruct.lastAlarmTime = millis();
+      alarmTriggered = false;
+      Serial.println("ALARM TRIGGERED!!!");
+      tx_byte = ALARM_SIGNAL;
+      mainDev->send(&tx_byte);
+      lastAlarmTime = millis();
+}
 static void triggerAlarm(void)
 {
   //Send the alarm to the central hub and wait for feedback!
@@ -58,18 +82,19 @@ static void triggerAlarm(void)
  void IRAM_ATTR vibrationISR()
 {
     currentTime = millis();
-    //Serial.println("/");
-
+    systemCurrentTime = millis();
     if((windowStartTime == 0) && ((currentTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
     {
         windowStartTime = currentTime;
         pulseCount = 1;
+        senzor1.pulseCount = 1;
         Serial.println("-");
 
     }
     if(windowStartTime != 0)//counting started, inc pulseCount
     {
       pulseCount++;
+      senzor2.pulseCount++;
       Serial.println("+");
     }
     if(currentTime - windowStartTime >= WINDOW_SIZE)
@@ -86,16 +111,19 @@ static void triggerAlarm(void)
 void IRAM_ATTR vibration2ISR()
 {
     currentTime = millis();
-      //Serial.println("/");
+    systemCurrentTime = millis();
 
     if((windowStartTime == 0) && ((currentTime - lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
     {
         windowStartTime = currentTime;
         pulseCount = 1;
+        senzor2.pulseCount = 1;
+
     }
     if(windowStartTime != 0)//counting started, inc pulseCount
     {
       pulseCount++;
+      senzor2.pulseCount++;
       Serial.println("+");
     }
     if(currentTime - windowStartTime >= WINDOW_SIZE)
@@ -117,8 +145,8 @@ static void userISR(void)
 }
 void setup() 
 {
-   rtc_wdt_protect_off(); // Disable write protection
-    rtc_wdt_disable();     // Disable the RTC watchdog
+  //  rtc_wdt_protect_off(); // Disable write protection
+  //   rtc_wdt_disable();     // Disable the RTC watchdog
    
    Serial.begin(115200);
     delay(100);
@@ -126,9 +154,9 @@ void setup()
     SpanPoint::setEncryption(false);// no password
     Serial.println("Initializare Alarma Auto");
     //1 byte for RX and TX sizes
-    esp_wifi_set_channel(11,(wifi_second_chan_t)0);
+    esp_wifi_set_channel(CANAL_WIFI,(wifi_second_chan_t)0);
     mainDev = new SpanPoint(MAIN_MAC, sizeof(uint16_t), sizeof(uint16_t));
-    esp_wifi_set_channel(11,(wifi_second_chan_t)0);
+    esp_wifi_set_channel(CANAL_WIFI,(wifi_second_chan_t)0);
 
    // homeSpan.setLogLevel(1);
  
@@ -137,13 +165,15 @@ void setup()
     attachInterrupt(digitalPinToInterrupt(USER_BUTTON),userISR,FALLING);
     attachInterrupt(digitalPinToInterrupt(SENSOR_PIN),vibrationISR,RISING);
     attachInterrupt(digitalPinToInterrupt(SECOND_SENSOR_PIN),vibration2ISR,RISING);
-
-      // int channel =0;
-      // channel = WiFi.channel();
+   
+    currentTime = millis();
+    systemCurrentTime = millis();
+      //Decomenteaza asta daca vrei sa afli canalul folosit de ESP32
+     
       // Serial.println("CHANNEL USED ::");
-      // Serial.println(channel);
-      // String mac_addr = WiFi.macAddress();
-      // Serial.println("This is the MAC ------>" + mac_addr);
+      // Serial.println(WiFi.channel(););
+      
+      // Serial.println("This is the MAC ------>" + WiFi.macAddress(););
 }
 //Send keep-alive message via ESP-NOW
 #ifdef ESP_NOW_RX_ENABLE
@@ -158,21 +188,21 @@ void setup()
 #endif
 inline void sendPeriodicKA(void)
 {
-     if(currentTime - lastTime > KEEPALIVE_MS)
+     if(currentTime - lastKaTime > KEEPALIVE_MS)
     {
         uint8_t keepalive = 0x4F4B;
         bool st = mainDev->send(&keepalive);
-        if(st == 0)
+        if(st == false)
         {
           Serial.println("ESP-NOW TX Fail!");
         }
-        lastTime = currentTime;
+        lastKaTime = currentTime;
     }
 }
 void loop() 
 {
     currentTime = millis();
-    
+    systemCurrentTime = millis();
     if(currentTime - windowStartTime > WINDOW_SIZE && windowStartTime !=0)
     {
       if(pulseCount < PULSE_THRESHOLD)
@@ -184,11 +214,22 @@ void loop()
 
     if(alarmTriggered == true)
     {
-      alarmTriggered = false;
+      sendAlarmSignal();
+    }
+
+    if(senzor1.isAlarmTriggered == true)
+    {
+      senzor1.isAlarmTriggered = false;      
       Serial.println("ALARM TRIGGERED!!!");
       tx_byte = ALARM_SIGNAL;
       mainDev->send(&tx_byte);
-      lastAlarmTime = millis();
+      senzor1.lastAlarmTime = millis();
+      sendAlarmSignal(&senzor1);
+
+    }
+     if(senzor2.isAlarmTriggered == true)
+    {
+       sendAlarmSignal(&senzor2);
     }
   
 #ifdef ESP_NOW_RX_ENABLE
