@@ -1,5 +1,4 @@
 
-/*****************************************************/
 //ESP32 to connect to the Home app!
 #include "HomeSpan.h"        
 #include "freertos/FreeRTOS.h"
@@ -246,10 +245,7 @@ void setup() {
   new SpanAccessory();                            
   
     new Service::AccessoryInformation();                
-      new Characteristic::Identify();                        
-
-    // new Service::LightBulb();                      
-    //   new Characteristic::On(true);            // NEW: Providing an argument sets its initial value.  In this case it means the LightBulb will be turned on at start-up
+      new Characteristic::Identify();                       
       
     _vibrationSensor = new vibrationSensor();
     new Service::BatteryService();
@@ -266,6 +262,7 @@ void setup() {
       SpanPoint::setEncryption(false);
       mainDevice = new SpanPoint(MAC_ALARMA, sizeof(uint16_t),sizeof(uint16_t));
       xTaskCreate(esp_now_task,"esp_now_task", 4095 * 2 ,NULL, 4, NULL);
+      //Decomenteaza sectiunea asta daca vrei sa afli canalul de WiFi pentru ESP-NOW
       // int channel =0;
       // channel = WiFi.channel();
       // Serial.println("CHANNEL USED ::");
@@ -278,22 +275,8 @@ void setup() {
       //remember to implement ESP-NOW!!!
       //and the feedback mechanism!
 }
-void homeSpanTask(void* pvArg)
-{
-  Serial.println("Starting the homeSpan polling task!");
-  for(;;)
-  {
-    homeSpan.poll();
-    vTaskDelay(pdMS_TO_TICKS(3));
-  }
-}
 
 void loop()
 {
       homeSpan.poll();
-      //Decomenteaza sectiunea asta daca vrei sa afli canalul de WiFi pentru ESP-NOW
-      //  int channel =0;
-      // channel = WiFi.channel();
-      //   Serial.println("CHANNEL USED ::");
-      //   Serial.println(channel);
 }
