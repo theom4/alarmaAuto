@@ -22,7 +22,6 @@ gpio_num_t SECOND_SENSOR_PIN = GPIO_NUM_6; // pinul folosit pentru al doilea sen
 #define USER_BUTTON GPIO_NUM_9 // buton utilizator - pentru testare
 #define KEEPALIVE_MS 2000 //keep-alive message interval in MS
 #define CANAL_WIFI 11 //canalul folosit de ESP-NOW
-#define RELAY_PIN 6 //pin pentru conexiunea la releul ce decclanseaza buzerr-ul
 
 //Decomenteaza aici daca vrei ca ESP-ul sa pirmeasca date prin ESP-NOW, nu doar sa transmita
 //#define ESP_NOW_RX_ENABLE 
