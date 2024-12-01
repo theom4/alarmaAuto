@@ -55,11 +55,11 @@ alarmTimeStruct senzor2 ;
 bool alarmTriggered = false;
 static void triggerBuzzer(void)
 {
-  //digitalWrite(RELAY_PIN, LOW);
+  digitalWrite(RELAY_PIN, HIGH);
 }
 static void stopBuzzer(void)
 {
-  //digitalWrite(RELAY_PIN, HIGH);
+  digitalWrite(RELAY_PIN,LOW);
 }
 static inline void sendAlarmSignal(alarmTimeStruct& sensorStruct)
 {
