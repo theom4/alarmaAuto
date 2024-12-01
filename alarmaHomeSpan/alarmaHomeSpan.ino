@@ -16,7 +16,7 @@
 gpio_num_t SENSOR_PIN = GPIO_NUM_5; // pinul folosit pentru primul senzor de vibratie (GPIO_NUM_X)
 gpio_num_t SECOND_SENSOR_PIN = GPIO_NUM_6; // pinul folosit pentru al doilea senzor de vibratie (GPIO_NUM_X)
 #define RELAY_PIN 7 // pinul pentru releu ce declanseaza alarma
-#define PULSE_THRESHOLD 40 //cate pulsuri de la senzor sa primesti(in milisecunde) ca sa declansezi alarma
+#define PULSE_THRESHOLD 40 //cate pulsuri de la senzor sa primesti ca sa declansezi alarma
 #define COOLDOWN_PERIOD 900 // perioada minima in milisecunde intre 2 declansari contigue a alarmei 
 #define WINDOW_SIZE 1000//perioada in milisecunde in care se numara pulsurile de la senzor
 #define USER_BUTTON GPIO_NUM_9 // buton utilizator - pentru testare
