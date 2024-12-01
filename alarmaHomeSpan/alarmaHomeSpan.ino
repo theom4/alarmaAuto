@@ -181,8 +181,8 @@ static void userISR(void) //push-button ISR
 }
 void setup() 
 {
-  //  rtc_wdt_protect_off(); // Disable write protection
-  //   rtc_wdt_disable();     // Disable the RTC watchdog
+    rtc_wdt_protect_off(); // Disable write protection
+     rtc_wdt_disable();     // Disable the RTC watchdog
    
    Serial.begin(115200);
     delay(100);
