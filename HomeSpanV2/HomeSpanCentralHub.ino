@@ -167,7 +167,7 @@ ledESP* ledPeESP;
 static void alarmHandlingTask(void* pvArg)
 {
   //get the alarm state via pvArg! - safety approach
-  bool* _isAlarmTaskRunnning = (bool)*pvArg;
+  bool* _isAlarmTaskRunnning = (bool*)pvArg;
   Serial.println("ALARMA DECLANSATA!");
   vTaskDelay(pdMS_TO_TICKS(1000));
   Serial.println("ALARMA OPRITA!");
