@@ -167,13 +167,13 @@ ledESP* ledPeESP;
 static void alarmHandlingTask(void* pvArg)
 {
   //get the alarm state via pvArg! - safety approach
-  isAlarmTaskRunnning = true;
+  bool _isAlarmTaskRunnning = (bool)*pvArg;
   Serial.println("ALARMA DECLANSATA!");
   vTaskDelay(pdMS_TO_TICKS(1000));
   Serial.println("ALARMA OPRITA!");
   taskENTER_CRITICAL();
   alarmTriggered = false;
-  isAlarmTaskRunning = false;
+  _isAlarmTaskRunnning = false;
   taskENTER_CRITICAL();
   _SistemSecuritate->setPresenceDetected(0);
   _vibrationSensor->setMotionState(1);
@@ -202,7 +202,7 @@ bool printedDisconnection = false;
                     _vibrationSensor->setMotionState(1);
                     if(isAlarmTaskRunning == false && alarmArmed == true)
                     {
-                      xTaskCreate(alarmHandlingTask, "alarmHandlingTask", 2048, NULL, 5, NULL);
+                      xTaskCreate(alarmHandlingTask, "alarmHandlingTask", 2048, &isAlarmTaskRunning, 5, NULL);
 
                     }
               }
