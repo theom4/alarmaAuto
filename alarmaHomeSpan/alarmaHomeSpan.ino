@@ -2,6 +2,7 @@
 //ESP32 to implement the alarm!
 #include "HomeSpan.h"
 #include "esp_task_wdt.h"
+#include "rtc_wdt.h"
 #include "esp_system.h"
 #include "driver/rtc_io.h"
 #include "freertos/FreeRTOS.h"
@@ -24,7 +25,7 @@ gpio_num_t SECOND_SENSOR_PIN = GPIO_NUM_6; // pinul folosit pentru al doilea sen
 #define CANAL_WIFI 11 //canalul folosit de ESP-NOW
 
 //Decomenteaza aici daca vrei ca ESP-ul sa pirmeasca date prin ESP-NOW, nu doar sa transmita
-//#define ESP_NOW_RX_ENABLE 
+#define ESP_NOW_RX_ENABLE 
 
 /******************************************************************************************************/
 #define ALARM_SIGNAL 0xDEAD // signal for telling the ESP32 that the alarm has been detected
@@ -34,10 +35,7 @@ size_t windowStartTime = 0;
 size_t windowCurrentTime = 0;
 size_t lastAlarmTime = 0;
 size_t lastKaTime =0 ; //for ESP-NOW delay 
-//////////
-//Use this variable only as a base source!
 size_t sysCurrTime = 0;
-/////////
 uint16_t rx_byte = 0, tx_byte = 0;
 struct alarmTimeStruct {
     size_t pulseCount;
@@ -69,10 +67,6 @@ static inline void sendAlarmSignal(alarmTimeStruct& sensorStruct)
       Serial.println("ALARM TRIGGERED!!!");
       tx_byte = ALARM_SIGNAL;
       mainDev->send(&tx_byte);
-}
-static void triggerAlarm(void)
-{
-  //Send the alarm to the central hub and wait for feedback!
 }
  void IRAM_ATTR vibrationISR()
 {
@@ -174,9 +168,7 @@ void IRAM_ATTR vibration2ISR()
 
 static void userISR(void) //push-button ISR
 {
-    //Emulate here the triggering of an alarm for testing purposes
     Serial.println("@");
-
 }
 void setup() 
 {
@@ -184,11 +176,11 @@ void setup()
      rtc_wdt_disable();     // Disable the RTC watchdog
    
    Serial.begin(115200);
-    delay(100);
+    delay(10);
 
     SpanPoint::setEncryption(false);// no password
     Serial.println("Initializare Alarma Auto");
-    //1 byte for RX and TX sizes
+    //2 bytes for RX and TX sizes
     esp_wifi_set_channel(CANAL_WIFI,(wifi_second_chan_t)0);
     mainDev = new SpanPoint(MAIN_MAC, sizeof(uint16_t), sizeof(uint16_t));
     esp_wifi_set_channel(CANAL_WIFI,(wifi_second_chan_t)0);
@@ -254,11 +246,11 @@ void loop()
 
     if(senzor1.isAlarmTriggered == true)
     {
-      senzor1.isAlarmTriggered = false;      
-      Serial.println("ALARM TRIGGERED!!!");
-      tx_byte = ALARM_SIGNAL;
-      mainDev->send(&tx_byte);
-      senzor1.lastAlarmTime = millis();
+    //  senzor1.isAlarmTriggered = false;      
+    //  Serial.println("ALARM TRIGGERED!!!");
+    //  tx_byte = ALARM_SIGNAL;
+    ///  mainDev->send(&tx_byte);
+     // senzor1.lastAlarmTime = millis();
       sendAlarmSignal(senzor1);
 
     }
