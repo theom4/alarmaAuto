@@ -24,7 +24,7 @@ gpio_num_t SECOND_SENSOR_PIN = GPIO_NUM_6; // pinul folosit pentru al doilea sen
 #define KEEPALIVE_MS 2000 //keep-alive message interval in MS
 #define CANAL_WIFI 11 //canalul folosit de ESP-NOW
 
-//Decomenteaza aici daca vrei ca ESP-ul sa pirmeasca date prin ESP-NOW, nu doar sa transmita
+//Decomenteaza aici daca vrei ca ESP-ul sa primeasca date prin ESP-NOW, nu doar sa transmita
 #define ESP_NOW_RX_ENABLE 
 
 /******************************************************************************************************/
