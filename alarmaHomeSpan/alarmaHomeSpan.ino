@@ -196,9 +196,9 @@ void setup()
     pinMode(SENSOR_PIN,INPUT);
     pinMode(SECOND_SENSOR_PIN,INPUT);
     pinMode(USER_BUTTON, INPUT_PULLUP);
-    attachInterrupt(digitalPinToInterrupt(USER_BUTTON),userISR,FALLING);
-    attachInterrupt(digitalPinToInterrupt(SENSOR_PIN),vibrationISR,RISING);
-    attachInterrupt(digitalPinToInterrupt(SECOND_SENSOR_PIN),vibration2ISR,RISING);
+  //  attachInterrupt(digitalPinToInterrupt(USER_BUTTON),userISR,FALLING);
+  //  attachInterrupt(digitalPinToInterrupt(SENSOR_PIN),vibrationISR,RISING);
+  //  attachInterrupt(digitalPinToInterrupt(SECOND_SENSOR_PIN),vibration2ISR,RISING);
    
 
     sysCurrTime = millis();
