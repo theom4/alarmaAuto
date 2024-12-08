@@ -70,7 +70,6 @@ static inline void sendAlarmSignal(alarmTimeStruct& sensorStruct)
 }
  void IRAM_ATTR vibrationISR()
 {
-        rtc_wdt_feed();
 
       sysCurrTime = millis();
     //pentru primul senzor
@@ -121,7 +120,6 @@ static inline void sendAlarmSignal(alarmTimeStruct& sensorStruct)
 //ISR pentru al doilea senzor
 void IRAM_ATTR vibration2ISR()
 {
-        rtc_wdt_feed();
 
       sysCurrTime = millis();
     // if((senzor2.windowStartTime == 0) && ((sysCurrTime - senzor2.lastAlarmTime)> COOLDOWN_PERIOD)) //start counting the pulses
@@ -168,7 +166,6 @@ void IRAM_ATTR vibration2ISR()
           alarmTriggered = true;
       }
     }
-          rtc_wdt_feed();
 
 }
 
@@ -180,10 +177,8 @@ void setup()
 {
     //rtc_wdt_protect_off(); // Disable write protection
      //rtc_wdt_disable();     // Disable the RTC watchdog
-   
+   esp_task_wdt_deinit();
    Serial.begin(115200);
-    delay(10);
-
     SpanPoint::setEncryption(false);// no password
     Serial.println("Initializare Alarma Auto");
     //2 bytes for RX and TX sizes
@@ -208,7 +203,6 @@ void setup()
       // Serial.println(WiFi.channel(););
       
       // Serial.println("This is the MAC ------>" + WiFi.macAddress(););
-          rtc_wdt_feed();
 
 }
 //Send keep-alive message via ESP-NOW
@@ -237,8 +231,7 @@ inline void sendPeriodicKA(void)
 }
 void loop() 
 {
-      rtc_wdt_feed();
-
+ 
       sysCurrTime = millis();
     if(sysCurrTime - windowStartTime > WINDOW_SIZE && windowStartTime !=0)
     {
