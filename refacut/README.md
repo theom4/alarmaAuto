@@ -2,6 +2,6 @@ Descarca fisierul ``LastResort.bin`` intr-un folder nou. Deschide linia de coman
 
 Ruleaza apoi comanda asta, trebue doar sa schimbi portul COM 
 
-```esptool.py --chip esp32 --port COM3 --baud 460800 write_flash -z 0x1000 firmware.bin```
+```esptool.py --chip esp32 --port COM3 --baud 460800 write_flash -z 0x1000 LastResort.bin```
 
 Deschide apoi arduino IDE si configureaza-l dupa bunul plac.
