@@ -241,9 +241,9 @@ void setup() {
 
    
   Serial.begin(115200); 
-  
+  homeSpan.setPairingCode("33441122");
   homeSpan.begin(Category::SecuritySystems,"Alarma Auto ESP32");  
-
+  homeSpan.setPairingCode("33441122");
   new SpanAccessory();                            
   
     new Service::AccessoryInformation();                
