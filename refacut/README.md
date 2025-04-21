@@ -1,3 +1,4 @@
+Pentru placa legata la senzorii de vibratie:
 Descarca fisierul ``LastResort.bin`` intr-un folder nou. Deschide linia de comanda in locatia acelui folder.
 
 Ruleaza apoi comanda asta, trebue doar sa schimbi portul COM 
