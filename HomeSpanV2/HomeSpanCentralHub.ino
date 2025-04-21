@@ -18,6 +18,8 @@
 
 
 /*********************************************************************/
+portMUX_TYPE alarmMutex = portMUX_INITIALIZER_UNLOCKED;
+
 bool alarmTriggered = false;
 uint16_t tx_byte = 0xD1;
 uint16_t rx_byte = 0;
@@ -171,10 +173,10 @@ static void alarmHandlingTask(void* pvArg)
   Serial.println("ALARMA DECLANSATA!");
   vTaskDelay(pdMS_TO_TICKS(1000));
   Serial.println("ALARMA OPRITA!");
-  taskENTER_CRITICAL();
+  taskENTER_CRITICAL(&alarmMutex);
   alarmTriggered = false;
   *_isAlarmTaskRunnning = false;
-  taskEXIT_CRITICAL();
+  taskEXIT_CRITICAL(&alarmMutex);
   _SistemSecuritate->setPresenceDetected(0);
   _vibrationSensor->setMotionState(1);
   vTaskDelete(NULL);
